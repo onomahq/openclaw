@@ -1,0 +1,226 @@
+# Onoma Provider
+
+Use your Onoma account as an AI chat provider in OpenClaw with persistent memory across all conversations.
+
+## Features
+
+- **Persistent Memory**: All conversations are automatically stored and recalled across sessions
+- **Space Organization**: Your memories organize themselves into Spaces without manual effort
+- **Multi-LLM Access**: Chat with 20+ models from various providers through a single interface
+- **Privacy First**: PII protection before external LLMs
+- **Streaming Responses**: Real-time token streaming with thinking transparency
+
+## Setup
+
+### 1. Get Your API Token
+
+1. Log into your Onoma account at [https://askonoma.com](https://askonoma.com)
+2. Navigate to Settings → Integration Tokens
+3. Click "Create Token"
+4. Give it a name (e.g., "OpenClaw")
+5. Select the scopes you need:
+   - `chat:read` - Read your conversations
+   - `chat:write` - Send messages (required)
+   - `memory:read` - Access your memories
+   - `memory:write` - Create new memories
+   - `spaces:read` - View your Spaces
+   - `models:read` - List available models
+6. Copy the token (you'll only see it once!)
+
+### 2. Configure OpenClaw
+
+Add to your `~/.openclaw/config.json5`:
+
+```json5
+{
+  models: {
+    providers: {
+      onoma: {
+        baseUrl: "https://api.askonoma.com/v1",
+        auth: "token",
+        models: [{
+          id: "onoma/memory",
+          name: "Onoma (with Memory)",
+          reasoning: false,
+          input: ["text"],
+          cost: { input: 0, output: 0 },
+          contextWindow: 128000,
+          maxTokens: 4096
+        }]
+      }
+    }
+  },
+  auth: {
+    profiles: {
+      "onoma": {
+        provider: "onoma",
+        token: "${ONOMA_API_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+### 3. Set Your Token
+
+Add to `~/.openclaw/.env`:
+
+```bash
+ONOMA_API_TOKEN=onoma_your_token_here
+```
+
+Or export it in your shell:
+
+```bash
+export ONOMA_API_TOKEN=onoma_your_token_here
+```
+
+## Usage
+
+### Basic Chat
+
+```bash
+openclaw chat --model onoma/memory
+```
+
+Your conversation will be automatically stored in Onoma and recalled in future chats.
+
+### Check Memory
+
+View your stored memories at [https://askonoma.com/manage/memory](https://askonoma.com/manage/memory)
+
+### Spaces
+
+Your conversations automatically organize into Spaces based on topics. View them at [https://askonoma.com/spaces](https://askonoma.com/spaces)
+
+## API Compatibility
+
+The Onoma provider implements the OpenAI-compatible chat completions API at:
+
+```
+POST https://api.askonoma.com/v1/chat/completions
+```
+
+### Request Format
+
+```json
+{
+  "model": "onoma/memory",
+  "messages": [
+    {"role": "user", "content": "What did we discuss yesterday?"}
+  ],
+  "stream": true
+}
+```
+
+### Response Format
+
+Streaming responses with Server-Sent Events (SSE):
+
+```
+data: {"type":"text","content":"Based on our previous conversation..."}
+data: {"type":"thinking","content":"Let me check your memories..."}
+data: [DONE]
+```
+
+## Token Scopes
+
+| Scope | Description |
+|-------|-------------|
+| `chat:read` | Read chat messages and conversations |
+| `chat:write` | Create and send chat messages |
+| `memory:read` | Read memory contexts and spaces |
+| `memory:write` | Create and update memory contexts |
+| `spaces:read` | View spaces and their information |
+| `models:read` | List available AI models |
+
+## Rate Limits
+
+- Token validation: 60 requests/minute per IP
+- Chat completions: Based on your Onoma subscription plan
+
+## Security
+
+- Tokens are hashed and stored securely
+- SSL/TLS required for all API requests
+- Tokens can be revoked instantly from your Onoma settings
+- Optional expiration dates for time-limited access
+
+## Troubleshooting
+
+### "Invalid token" Error
+
+1. Verify your token starts with `onoma_`
+2. Check it's set correctly in your `.env` file
+3. Ensure the token hasn't expired
+4. Confirm the token hasn't been revoked in your Onoma settings
+
+### "Missing required scope" Error
+
+Recreate your token with the necessary scopes:
+- For basic chat: `chat:write`, `chat:read`
+- For memory access: `memory:read`, `memory:write`
+
+### Connection Issues
+
+- Verify you can access `https://api.askonoma.com/v1/models`
+- Check your internet connection
+- Ensure SSL certificates are valid
+
+## Examples
+
+### Telegram Bot Integration
+
+```javascript
+// Using Onoma with a Telegram bot
+const { OpenAI } = require('openai');
+
+const client = new OpenAI({
+  baseURL: 'https://api.askonoma.com/v1',
+  apiKey: process.env.ONOMA_API_TOKEN,
+});
+
+async function handleMessage(message) {
+  const response = await client.chat.completions.create({
+    model: 'onoma/memory',
+    messages: [{ role: 'user', content: message }],
+    stream: true,
+  });
+
+  for await (const chunk of response) {
+    const content = chunk.choices[0]?.delta?.content;
+    if (content) {
+      // Send to Telegram...
+    }
+  }
+}
+```
+
+### Discord Bot Integration
+
+```python
+# Using Onoma with a Discord bot
+import openai
+import os
+
+openai.api_key = os.getenv("ONOMA_API_TOKEN")
+openai.api_base = "https://api.askonoma.com/v1"
+
+@bot.command()
+async def ask(ctx, *, question):
+    response = openai.ChatCompletion.create(
+        model="onoma/memory",
+        messages=[{"role": "user", "content": question}],
+        stream=True,
+    )
+
+    for chunk in response:
+        if content := chunk.choices[0].delta.get("content"):
+            await ctx.send(content)
+```
+
+## Support
+
+- Documentation: [https://docs.askonoma.com](https://docs.askonoma.com)
+- Email: support@askonoma.com
+- Issues: [GitHub](https://github.com/onoma/onoma/issues)

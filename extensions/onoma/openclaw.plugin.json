@@ -1,0 +1,35 @@
+{
+  "id": "onoma",
+  "kind": "memory",
+  "uiHints": {
+    "apiUrl": {
+      "label": "API URL",
+      "placeholder": "https://api.askonoma.com",
+      "help": "Onoma API endpoint URL",
+      "advanced": true
+    },
+    "apiToken": {
+      "label": "API Token",
+      "sensitive": true,
+      "placeholder": "onoma_...",
+      "help": "Integration token from https://askonoma.com/manage/integration-tokens"
+    },
+    "autoRecall": {
+      "label": "Auto-Recall",
+      "help": "Automatically inject relevant memories before agent starts"
+    },
+    "autoCapture": {
+      "label": "Auto-Capture",
+      "help": "Automatically extract and store context after conversations"
+    },
+    "maxRecallResults": {
+      "label": "Max Recall Results",
+      "placeholder": "5",
+      "help": "Maximum number of memories to recall",
+      "advanced": true
+    }
+  },
+  "configSchema": {
+    "parse": "./config.ts"
+  }
+}
