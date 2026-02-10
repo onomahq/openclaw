@@ -56,23 +56,35 @@ export class OnomaClient {
   }
 
   async searchMemories(query: string, limit?: number): Promise<MemorySearchResult> {
-    const response = await fetch(`${this.config.apiUrl}/v1/memory/search`, {
-      method: 'POST',
+    const params = new URLSearchParams({
+      q: query,
+      limit: String(limit || this.config.maxRecallResults),
+    });
+    const response = await fetch(`${this.config.apiUrl}/v1/memory/search?${params}`, {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
         Authorization: `Bearer ${this.config.apiToken}`,
       },
-      body: JSON.stringify({
-        query,
-        limit: limit || this.config.maxRecallResults,
-      }),
     });
 
     if (!response.ok) {
       throw new Error(`Failed to search memories: ${response.statusText}`);
     }
 
-    return (await response.json()) as MemorySearchResult;
+    const contexts = (await response.json()) as any[];
+    return {
+      memories: contexts.map((c) => ({
+        id: c.id,
+        content: c.content,
+        context_type: c.context_type,
+        temporal_class: c.temporal_class,
+        confidence: c.confidence,
+        created_at: c.created_at,
+        message_id: c.message_id,
+        space_id: c.space_id,
+      })),
+      total: contexts.length,
+    };
   }
 
   async getMemoryStats(): Promise<MemoryStats> {
@@ -135,40 +147,21 @@ export class OnomaClient {
     messages: ChatCompletionMessageParam[],
     metadata?: Record<string, any>
   ): Promise<Memory[]> {
-    const response = await this.client.chat.completions.create({
-      model: 'cortex',
-      messages: [
-        {
-          role: 'system',
-          content:
-            'Extract factual information and memories from this conversation. Return full sentences, not fragments.',
-        },
-        ...messages,
-      ],
-      stream: false,
+    const response = await fetch(`${this.config.apiUrl}/v1/memory/extract`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.config.apiToken}`,
+      },
+      body: JSON.stringify({ messages, metadata }),
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      return [];
+    if (!response.ok) {
+      throw new Error(`Extract failed: ${response.statusText}`);
     }
 
-    // Parse extracted contexts from response
-    const lines = content.split('\n').filter((line) => line.trim());
-    const memories: Memory[] = [];
-
-    for (const line of lines) {
-      if (line.length > 10) {
-        try {
-          const memory = await this.createMemory(line, 'extracted', metadata);
-          memories.push(memory);
-        } catch (error) {
-          console.error(`Failed to store memory: ${error}`);
-        }
-      }
-    }
-
-    return memories;
+    const data = (await response.json()) as { memories: Memory[]; count: number };
+    return data.memories;
   }
 
   async chat(
