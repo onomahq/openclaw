@@ -1,0 +1,26 @@
+{
+  "id": "onoma-provider",
+  "providers": ["onoma"],
+  "name": "Onoma",
+  "description": "AI model provider powered by Onoma",
+  "version": "1.0.0",
+  "uiHints": {
+    "apiUrl": {
+      "label": "API URL",
+      "placeholder": "https://completion.askonoma.com",
+      "advanced": true
+    },
+    "apiToken": {
+      "label": "API Token",
+      "sensitive": true,
+      "placeholder": "onm_..."
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "apiUrl": { "type": "string" },
+      "apiToken": { "type": "string" }
+    }
+  }
+}
